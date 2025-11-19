@@ -1,60 +1,52 @@
-#include "example_processes/seq/include/ops_seq.hpp"
+#include "ovchinnikov_m_max_values_in_matrix_rows/seq/include/ops_seq.hpp"
 
 #include <numeric>
 #include <vector>
 
-#include "example_processes/common/include/common.hpp"
+#include "ovchinnikov_m_max_values_in_matrix_rows/common/include/common.hpp"
 #include "util/include/util.hpp"
 
-namespace nesterov_a_test_task_processes {
+namespace ovchinnikov_m_max_values_in_matrix_rows {
 
-NesterovATestTaskSEQ::NesterovATestTaskSEQ(const InType &in) {
+OvchinnikovMMaxValuesInMatrixRowsSEQ::OvchinnikovMMaxValuesInMatrixRowsSEQ(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetInput() = in;
-  GetOutput() = 0;
+  GetOutput();
 }
 
-bool NesterovATestTaskSEQ::ValidationImpl() {
-  return (GetInput() > 0) && (GetOutput() == 0);
+bool OvchinnikovMMaxValuesInMatrixRowsSEQ::ValidationImpl() {
+  // return (GetInput() > 0) && (GetOutput() == 0);
+  return true;
 }
 
-bool NesterovATestTaskSEQ::PreProcessingImpl() {
-  GetOutput() = 2 * GetInput();
-  return GetOutput() > 0;
+bool OvchinnikovMMaxValuesInMatrixRowsSEQ::PreProcessingImpl() {
+  // GetOutput() = 2 * GetInput();
+  // return GetOutput() > 0;
+  return true;
 }
 
-bool NesterovATestTaskSEQ::RunImpl() {
-  if (GetInput() == 0) {
-    return false;
-  }
-
-  for (InType i = 0; i < GetInput(); i++) {
-    for (InType j = 0; j < GetInput(); j++) {
-      for (InType k = 0; k < GetInput(); k++) {
-        std::vector<InType> tmp(i + j + k, 1);
-        GetOutput() += std::accumulate(tmp.begin(), tmp.end(), 0);
-        GetOutput() -= i + j + k;
-      }
+bool OvchinnikovMMaxValuesInMatrixRowsSEQ::RunImpl() {
+  // if (GetInput() == 0) {
+  //   GetOutput()=0;
+  //   return false;
+  // }
+  const auto &matrix = GetInput();
+  size_t rows = matrix.size();
+  size_t lines = matrix[0].size();
+  OutType result(lines, std::numeric_limits<int>::min());
+  for (size_t i = 0; i < rows; i++) {
+    for (size_t j = 0; j < lines; j++) {
+      result[j] = std::max(result[j], matrix[i][j]);
     }
   }
-
-  const int num_threads = ppc::util::GetNumThreads();
-  GetOutput() *= num_threads;
-
-  int counter = 0;
-  for (int i = 0; i < num_threads; i++) {
-    counter++;
-  }
-
-  if (counter != 0) {
-    GetOutput() /= counter;
-  }
-  return GetOutput() > 0;
+  GetOutput() = result;
+  return true;
 }
 
-bool NesterovATestTaskSEQ::PostProcessingImpl() {
-  GetOutput() -= GetInput();
-  return GetOutput() > 0;
+bool OvchinnikovMMaxValuesInMatrixRowsSEQ::PostProcessingImpl() {
+  // GetOutput() -= GetInput();
+  // return GetOutput() > 0;
+  return true;
 }
 
-}  // namespace nesterov_a_test_task_processes
+}  // namespace ovchinnikov_m_max_values_in_matrix_rows
