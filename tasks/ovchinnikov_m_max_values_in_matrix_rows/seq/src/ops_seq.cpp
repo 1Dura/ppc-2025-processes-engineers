@@ -26,13 +26,13 @@ bool OvchinnikovMMaxValuesInMatrixRowsSEQ::PreProcessingImpl() {
 }
 
 bool OvchinnikovMMaxValuesInMatrixRowsSEQ::RunImpl() {
-  // if (GetInput() == 0) {
-  //   GetOutput()=0;
-  //   return false;
-  // }
   const auto &matrix = GetInput();
   size_t rows = matrix.size();
+  if (rows == 0) {
+    return true;
+  }
   size_t lines = matrix[0].size();
+
   OutType result(lines, std::numeric_limits<int>::min());
   for (size_t i = 0; i < rows; i++) {
     for (size_t j = 0; j < lines; j++) {

@@ -10,8 +10,8 @@ namespace ovchinnikov_m_max_values_in_matrix_rows {
 class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfTests<InType, OutType> {
  protected:
   void SetUp() override {
-    rows_ = 1000;
-    lines_ = 1000;
+    rows_ = 2000;
+    lines_ = 20000;
 
     input_data_.resize(rows_);
     for (int i = 0; i < rows_; i++) {
