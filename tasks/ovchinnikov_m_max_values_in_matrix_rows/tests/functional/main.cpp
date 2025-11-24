@@ -4,12 +4,9 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <cstdint>
-#include <numeric>
-#include <stdexcept>
+#include <limits>
 #include <string>
 #include <tuple>
-#include <utility>
 #include <vector>
 
 #include "ovchinnikov_m_max_values_in_matrix_rows/common/include/common.hpp"
@@ -28,12 +25,12 @@ class OvchinnikovMMaxValuesInMatrixRowsFuncTests : public ppc::util::BaseRunFunc
 
  protected:
   void SetUp() override {
-    TestType params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
+    const TestType params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
     input_data_ = std::get<0>(params);
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
-    OutType expected = CalcExpected(input_data_);
+    const OutType expected = CalcExpected(input_data_);
     return output_data == expected;
   }
 
@@ -49,11 +46,11 @@ class OvchinnikovMMaxValuesInMatrixRowsFuncTests : public ppc::util::BaseRunFunc
       return {};
     }
 
-    int lines = m[0].size();
+    const std::size_t lines = m[0].size();
     OutType result(lines, std::numeric_limits<int>::min());
 
     for (const auto &row : m) {
-      for (int j = 0; j < lines; j++) {
+      for (std::size_t j = 0; j < lines; j++) {
         result[j] = std::max(result[j], row[j]);
       }
     }
@@ -67,17 +64,19 @@ TEST_P(OvchinnikovMMaxValuesInMatrixRowsFuncTests, MatmulFromPic) {
   ExecuteTest(GetParam());
 }
 
-const std::array<TestType, 6> kTestParam = {std::make_tuple(InType{}, "empty_matrix"),
-                                            std::make_tuple(InType{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}, "matrix_3x3"),
-                                            std::make_tuple(InType{{-1, -5}, {4, 0}}, "negatives"),
-                                            std::make_tuple(InType{{10}}, "single_element"),
-                                            std::make_tuple(InType{{1, 10, 3}, {7, 0, 100}}, "random"),
-                                            std::make_tuple(InType{{1, 2, 3, 4, 5, 6, 7, 8, 9},
-                                                                   {7, 6, 3, 2, 9, 4, 2, 5, 8},
-                                                                   {1, 2, 3, 4, 5, 6, 7, 8, 9},
-                                                                   {1, 2, 3, 4, 5, 6, 7, 8, 9},
-                                                                   {7, 6, 3, 2, 9, 4, 2, 5, 8}},
-                                                            "Large_matrix")};
+const std::array<TestType, 6> kTestParam = {
+    std::make_tuple(InType{}, "empty_matrix"),
+    std::make_tuple(InType{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}, "matrix_3x3"),
+    std::make_tuple(InType{{-1, -5}, {4, 0}}, "negatives"),
+    std::make_tuple(InType{{10}}, "single_element"),
+    std::make_tuple(InType{{1, 10, 3}, {7, 0, 100}}, "random"),
+    std::make_tuple(InType{{1, 2, 3, 4, 5, 6, 7, 8, 9},
+                           {7, 6, 3, 2, 9, 4, 2, 5, 8},
+                           {1, 2, 3, 4, 5, 6, 7, 8, 9},
+                           {1, 2, 3, 4, 5, 6, 7, 8, 9},
+                           {7, 6, 3, 2, 9, 4, 2, 5, 8}},
+                    "Large_matrix"),
+};
 
 const auto kTestTasksList = std::tuple_cat(ppc::util::AddFuncTask<OvchinnikovMMaxValuesInMatrixRowsMPI, InType>(
                                                kTestParam, PPC_SETTINGS_ovchinnikov_m_max_values_in_matrix_rows),

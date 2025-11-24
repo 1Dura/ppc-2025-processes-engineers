@@ -1,5 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <limits>
+#include <random>
+#include <vector>
+
 #include "ovchinnikov_m_max_values_in_matrix_rows/common/include/common.hpp"
 #include "ovchinnikov_m_max_values_in_matrix_rows/mpi/include/ops_mpi.hpp"
 #include "ovchinnikov_m_max_values_in_matrix_rows/seq/include/ops_seq.hpp"
@@ -8,16 +13,23 @@
 namespace ovchinnikov_m_max_values_in_matrix_rows {
 
 class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfTests<InType, OutType> {
+ public:
+  OvchinnikovMMaxValuesInMatrixRowsPerfTest() : rows_(0), lines_(0) {}
+
  protected:
   void SetUp() override {
     rows_ = 2000;
     lines_ = 20000;
 
     input_data_.resize(rows_);
+
+    std::mt19937 rng(12345);
+    std::uniform_int_distribution<int> dist(0, 9999);
+
     for (int i = 0; i < rows_; i++) {
       input_data_[i].resize(lines_);
       for (int j = 0; j < lines_; j++) {
-        input_data_[i][j] = rand() % 10000;
+        input_data_[i][j] = dist(rng);
       }
     }
   }
@@ -34,16 +46,17 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
   InType input_data_;
   int rows_;
   int lines_;
+
   static OutType CalcExpected(const InType &matrix) {
     if (matrix.empty() || matrix[0].empty()) {
       return {};
     }
 
-    int lines = matrix[0].size();
+    const std::size_t lines = matrix[0].size();
     OutType result(lines, std::numeric_limits<int>::min());
 
     for (const auto &row : matrix) {
-      for (int j = 0; j < lines; j++) {
+      for (std::size_t j = 0; j < lines; j++) {
         result[j] = std::max(result[j], row[j]);
       }
     }
