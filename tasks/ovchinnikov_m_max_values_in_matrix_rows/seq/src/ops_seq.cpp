@@ -1,18 +1,19 @@
 #include "ovchinnikov_m_max_values_in_matrix_rows/seq/include/ops_seq.hpp"
 
 #include <algorithm>
-#include <cstddef>
 #include <limits>
 #include <vector>
 
-#include "ovchinnikov_m_max_values_in_matrix_rows/common/include/common.hpp"
-
 namespace ovchinnikov_m_max_values_in_matrix_rows {
 
-OvchinnikovMMaxValuesInMatrixRowsSEQ::OvchinnikovMMaxValuesInMatrixRowsSEQ(const InType &in) : BaseTask(in) {}
+OvchinnikovMMaxValuesInMatrixRowsSEQ::OvchinnikovMMaxValuesInMatrixRowsSEQ(const InType &in) {
+  SetTypeOfTask(GetStaticTypeOfTask());
+  GetInput() = in;
+  static_cast<void>(GetOutput());
+}
 
 bool OvchinnikovMMaxValuesInMatrixRowsSEQ::ValidationImpl() {
-  return !task_input_.empty() && !task_input_[0].empty();
+  return true;
 }
 
 bool OvchinnikovMMaxValuesInMatrixRowsSEQ::PreProcessingImpl() {
@@ -20,24 +21,26 @@ bool OvchinnikovMMaxValuesInMatrixRowsSEQ::PreProcessingImpl() {
 }
 
 bool OvchinnikovMMaxValuesInMatrixRowsSEQ::RunImpl() {
-  const auto &matrix = task_input_;
+  const auto &matrix = GetInput();
+  const int rows = static_cast<int>(matrix.size());
+  if (rows == 0) {
+    return true;
+  }
+  const int cols = static_cast<int>(matrix[0].size());
 
-  size_t rows = matrix.size();
-  size_t lines = matrix[0].size();
+  std::vector<int> result(cols, std::numeric_limits<int>::min());
 
-  result_.assign(lines, std::numeric_limits<int>::min());
-
-  for (size_t i = 0; i < rows; i++) {
-    for (size_t j = 0; j < lines; j++) {
-      result_[j] = std::max(result_[j], matrix[i][j]);
+  for (int i = 0; i < rows; ++i) {
+    for (int j = 0; j < cols; ++j) {
+      result[j] = std::max(result[j], matrix[i][j]);
     }
   }
 
+  GetOutput() = result;
   return true;
 }
 
 bool OvchinnikovMMaxValuesInMatrixRowsSEQ::PostProcessingImpl() {
-  task_output_ = result_;
   return true;
 }
 

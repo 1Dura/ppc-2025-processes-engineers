@@ -2,8 +2,8 @@
 
 #include <mpi.h>
 
-#include <algorithm>  // std::min, std::max
-#include <limits>     // std::numeric_limits
+#include <algorithm>
+#include <limits>
 #include <vector>
 
 #include "ovchinnikov_m_max_values_in_matrix_rows/common/include/common.hpp"
