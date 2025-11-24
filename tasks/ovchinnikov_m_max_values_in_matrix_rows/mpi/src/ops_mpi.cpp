@@ -12,7 +12,7 @@ namespace ovchinnikov_m_max_values_in_matrix_rows {
 
 OvchinnikovMMaxValuesInMatrixRowsMPI::OvchinnikovMMaxValuesInMatrixRowsMPI(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
-  GetInput() = in;
+  GetInput().assign(in.begin(), in.end());
   static_cast<void>(GetOutput());
 }
 

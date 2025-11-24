@@ -10,7 +10,7 @@ namespace ovchinnikov_m_max_values_in_matrix_rows {
 
 OvchinnikovMMaxValuesInMatrixRowsSEQ::OvchinnikovMMaxValuesInMatrixRowsSEQ(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
-  GetInput() = in;
+  GetInput().assign(in.begin(), in.end());
   static_cast<void>(GetOutput());
 }
 
