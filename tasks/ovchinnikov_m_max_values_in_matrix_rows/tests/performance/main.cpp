@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstddef>
+#include <limits>
 
 #include "ovchinnikov_m_max_values_in_matrix_rows/common/include/common.hpp"
 #include "ovchinnikov_m_max_values_in_matrix_rows/mpi/include/ops_mpi.hpp"
@@ -11,7 +13,7 @@ namespace ovchinnikov_m_max_values_in_matrix_rows {
 
 class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfTests<InType, OutType> {
  public:
-  OvchinnikovMMaxValuesInMatrixRowsPerfTest() : rows_(0), lines_(0) {}
+  OvchinnikovMMaxValuesInMatrixRowsPerfTest() = default;
 
  protected:
   void SetUp() override {
