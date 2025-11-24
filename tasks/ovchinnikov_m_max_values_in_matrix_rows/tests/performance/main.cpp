@@ -22,7 +22,7 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
     }
   }
 
-  bool CheckTestOutputData(OutType& output_data) final {
+  bool CheckTestOutputData(OutType &output_data) final {
     return output_data == CalcExpected(input_data_);
   }
 
@@ -34,7 +34,7 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
   InType input_data_;
   int rows_;
   int lines_;
-  static OutType CalcExpected(const InType& matrix) {
+  static OutType CalcExpected(const InType &matrix) {
     if (matrix.empty() || matrix[0].empty()) {
       return {};
     }
@@ -42,7 +42,7 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
     int lines = matrix[0].size();
     OutType result(lines, std::numeric_limits<int>::min());
 
-    for (const auto& row : matrix) {
+    for (const auto &row : matrix) {
       for (int j = 0; j < lines; j++) {
         result[j] = std::max(result[j], row[j]);
       }
