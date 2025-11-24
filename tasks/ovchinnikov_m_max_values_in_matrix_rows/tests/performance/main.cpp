@@ -1,9 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <limits>
-#include <random>
-#include <vector>
+#include <cstddef>
 
 #include "ovchinnikov_m_max_values_in_matrix_rows/common/include/common.hpp"
 #include "ovchinnikov_m_max_values_in_matrix_rows/mpi/include/ops_mpi.hpp"
@@ -23,13 +20,10 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
 
     input_data_.resize(rows_);
 
-    std::mt19937 rng(12345);
-    std::uniform_int_distribution<int> dist(0, 9999);
-
     for (int i = 0; i < rows_; i++) {
       input_data_[i].resize(lines_);
       for (int j = 0; j < lines_; j++) {
-        input_data_[i][j] = dist(rng);
+        input_data_[i][j] = j * i;
       }
     }
   }
@@ -44,8 +38,8 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
 
  private:
   InType input_data_;
-  int rows_;
-  int lines_;
+  int rows_ = 0;
+  int lines_ = 0;
 
   static OutType CalcExpected(const InType &matrix) {
     if (matrix.empty() || matrix[0].empty()) {

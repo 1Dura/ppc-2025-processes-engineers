@@ -32,7 +32,7 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
 
   const auto &matrix = GetInput();
   const int rows = static_cast<int>(matrix.size());
-  if (rows == 0) {
+  if (rows <= 0) {
     return true;
   }
 

@@ -4,6 +4,8 @@
 #include <limits>
 #include <vector>
 
+#include "ovchinnikov_m_max_values_in_matrix_rows/common/include/common.hpp"
+
 namespace ovchinnikov_m_max_values_in_matrix_rows {
 
 OvchinnikovMMaxValuesInMatrixRowsSEQ::OvchinnikovMMaxValuesInMatrixRowsSEQ(const InType &in) {
