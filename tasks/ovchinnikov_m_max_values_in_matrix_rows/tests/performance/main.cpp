@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <limits>
+#include <tuple>
 #include <vector>
 
 #include "ovchinnikov_m_max_values_in_matrix_rows/common/include/common.hpp"
@@ -21,9 +23,9 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
     cols_ = 20000;
     data_.resize(rows_ * cols_);
 
-    for (int i = 0; i < rows_; i++) {
-      for (int j = 0; j < cols_; j++) {
-        data_[i * cols_ + j] = i * j;
+    for (size_t i = 0; i < rows_; i++) {
+      for (size_t j = 0; j < cols_; j++) {
+        data_[(i * cols_) + j] = i * j;
       }
     }
 
@@ -41,12 +43,12 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
  private:
   InType input_data_;
   std::vector<int> data_;
-  int rows_ = 0;
-  int cols_ = 0;
+  size_t rows_ = 0;
+  size_t cols_ = 0;
 
   static OutType CalcExpected(const InType &input) {
-    int rows = std::get<0>(input);
-    int cols = std::get<1>(input);
+    size_t rows = std::get<0>(input);
+    size_t cols = std::get<1>(input);
     const std::vector<int> &data = std::get<2>(input);
 
     if (rows == 0 || cols == 0) {
@@ -55,9 +57,9 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
 
     OutType result(cols, std::numeric_limits<int>::min());
 
-    for (int i = 0; i < rows; i++) {
-      for (int j = 0; j < cols; j++) {
-        result[j] = std::max(result[j], data[i * cols + j]);
+    for (size_t i = 0; i < rows; i++) {
+      for (size_t j = 0; j < cols; j++) {
+        result[j] = std::max(result[j], data[(i * cols) + j]);
       }
     }
     return result;

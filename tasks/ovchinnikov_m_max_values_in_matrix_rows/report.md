@@ -26,7 +26,7 @@
 
 - Formal task definition: нужно написать последовательную и параллельную, использующую средства Open MPI, программы, которые позволят найти максимальное значение в каждом столбце введенной матрицы. Сравнить скорости работы полученных реализаций, а так же проверить их валидность посредством Func и Perf тестов.
 
-- input/output format: на вход программе подаются размеры матрицы (два целых числа), и сама матрица, которая представлена в виде одного вектора, содержащего int числа (то есть матрица хранится линейно). На выход подаётся вектор, с числами int, которые являются максимальными значениями столбцов матрицы (j-ый элемент вектора равен максимальному значению j-го столбца в данной матрице).
+- input/output format: на вход программе подаются размеры матрицы (два size_t числа), и сама матрица, которая представлена в виде одного вектора, содержащего int числа (то есть матрица хранится линейно). На выход подаётся вектор, с числами int, которые являются максимальными значениями столбцов матрицы (j-ый элемент вектора равен максимальному значению j-го столбца в данной матрице).
 
 ## 3. Baseline Algorithm (Sequential)
 
@@ -38,13 +38,13 @@
 
 ```cpp
 
-int base = rows / size;
+size_t base = rows / size;
 
-int extra = rows % size;
+size_t extra = rows % size;
 
-int my_start = rank * base +  std::min(rank, extra);
+size_t my_start = rank * base +  std::min(rank, extra);
 
-int my_end = my_start + base + (rank < extra ?  1  :  0);
+size_t my_end = my_start + base + (rank < extra ?  1  :  0);
 
 ```
 
@@ -77,23 +77,23 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  int cols = std::get<1>(GetInput());
-  int rows = std::get<0>(GetInput());
+  size_t cols = std::get<1>(GetInput());
+  size_t rows = std::get<0>(GetInput());
   if (rows <= 0 || cols <= 0) {
     return true;
   }
 
   const auto &matrix = std::get<2>(GetInput());
 
-  const int base = rows / size;
-  const int extra = rows % size;
-  const int my_start = (rank * base) + std::min(rank, extra);
-  const int my_end = my_start + base + (rank < extra ? 1 : 0);
+  const size_t base = rows / size;
+  const size_t extra = rows % size;
+  const size_t my_start = (rank * base) + std::min(rank, extra);
+  const size_t my_end = my_start + base + (rank < extra ? 1 : 0);
 
   std::vector<int> local_max(cols, std::numeric_limits<int>::min());
 
-  for (int i = my_start; i < my_end; ++i) {
-    for (int j = 0; j < cols; ++j) {
+  for (size_t i = my_start; i < my_end; ++i) {
+    for (size_t j = 0; j < cols; ++j) {
       local_max[j] = std::max(local_max[j], matrix[i * cols + j]);
     }
   }

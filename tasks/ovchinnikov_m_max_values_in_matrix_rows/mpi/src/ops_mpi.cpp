@@ -3,6 +3,7 @@
 #include <mpi.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <limits>
 #include <vector>
 
@@ -30,9 +31,9 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  int cols = std::get<1>(GetInput());
-  int rows = std::get<0>(GetInput());
-  if (rows <= 0 || cols <= 0) {
+  size_t cols = std::get<1>(GetInput());
+  size_t rows = std::get<0>(GetInput());
+  if (rows == 0 || cols == 0) {
     return true;
   }
 
@@ -46,8 +47,8 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
   std::vector<int> local_max(cols, std::numeric_limits<int>::min());
 
   for (int i = my_start; i < my_end; ++i) {
-    for (int j = 0; j < cols; ++j) {
-      local_max[j] = std::max(local_max[j], matrix[i * cols + j]);
+    for (size_t j = 0; j < cols; ++j) {
+      local_max[j] = std::max(local_max[j], matrix[(i * cols) + j]);
     }
   }
 

@@ -1,6 +1,7 @@
 #include "ovchinnikov_m_max_values_in_matrix_rows/seq/include/ops_seq.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <limits>
 #include <vector>
 
@@ -23,17 +24,17 @@ bool OvchinnikovMMaxValuesInMatrixRowsSEQ::PreProcessingImpl() {
 }
 
 bool OvchinnikovMMaxValuesInMatrixRowsSEQ::RunImpl() {
-  int rows = std::get<0>(GetInput());
-  int cols = std::get<1>(GetInput());
-  if (rows <= 0 || cols <= 0) {
+  size_t rows = std::get<0>(GetInput());
+  size_t cols = std::get<1>(GetInput());
+  if (rows == 0 || cols == 0) {
     return true;
   }
   const auto &matrix = std::get<2>(GetInput());
   std::vector<int> result(cols, std::numeric_limits<int>::min());
 
-  for (int i = 0; i < rows; ++i) {
-    for (int j = 0; j < cols; ++j) {
-      result[j] = std::max(result[j], matrix[i * cols + j]);
+  for (size_t i = 0; i < rows; ++i) {
+    for (size_t j = 0; j < cols; ++j) {
+      result[j] = std::max(result[j], matrix[(i * cols) + j]);
     }
   }
 

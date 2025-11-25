@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <limits>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -24,8 +26,8 @@ class OvchinnikovMMaxValuesInMatrixRowsFuncTests : public ppc::util::BaseRunFunc
   void SetUp() override {
     const TestType params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
 
-    int rows = std::get<0>(params);
-    int cols = std::get<1>(params);
+    size_t rows = std::get<0>(params);
+    size_t cols = std::get<1>(params);
     const std::vector<int> &data = std::get<2>(params);
 
     input_data_ = std::make_tuple(rows, cols, data);
@@ -43,10 +45,9 @@ class OvchinnikovMMaxValuesInMatrixRowsFuncTests : public ppc::util::BaseRunFunc
  private:
   InType input_data_;
 
-  // Вычисление ожидаемых максимальных значений по столбцам
   static OutType CalcExpected(const InType &m) {
-    int rows = std::get<0>(m);
-    int cols = std::get<1>(m);
+    size_t rows = std::get<0>(m);
+    size_t cols = std::get<1>(m);
     const std::vector<int> &data = std::get<2>(m);
 
     if (rows == 0 || cols == 0) {
@@ -55,8 +56,8 @@ class OvchinnikovMMaxValuesInMatrixRowsFuncTests : public ppc::util::BaseRunFunc
 
     OutType result(cols, std::numeric_limits<int>::min());
 
-    for (int i = 0; i < rows; i++) {
-      for (int j = 0; j < cols; j++) {
+    for (size_t i = 0; i < rows; i++) {
+      for (size_t j = 0; j < cols; j++) {
         int value = data[i * cols + j];
         result[j] = std::max(result[j], value);
       }
