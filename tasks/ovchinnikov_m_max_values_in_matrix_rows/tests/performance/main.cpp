@@ -25,7 +25,7 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
 
     for (size_t i = 0; i < rows_; i++) {
       for (size_t j = 0; j < cols_; j++) {
-        data_[(i * cols_) + j] = i * j;
+        data_[(i * cols_) + j] = static_cast<int>(i * j);
       }
     }
 

@@ -39,8 +39,8 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
 
   const auto &matrix = std::get<2>(GetInput());
 
-  const int base = rows / size;
-  const int extra = rows % size;
+  int base = static_cast<int>(rows / static_cast<size_t>(size));
+  int extra = static_cast<int>(rows % static_cast<size_t>(size));
   const int my_start = (rank * base) + std::min(rank, extra);
   const int my_end = my_start + base + (rank < extra ? 1 : 0);
 
@@ -53,7 +53,7 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
   }
 
   std::vector<int> global_max(cols);
-  MPI_Allreduce(local_max.data(), global_max.data(), cols, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(local_max.data(), global_max.data(), static_cast<int>(cols), MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
   GetOutput() = global_max;
 
