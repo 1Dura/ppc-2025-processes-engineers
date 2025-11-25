@@ -26,7 +26,7 @@
 
 - Formal task definition: нужно написать последовательную и параллельную, использующую средства Open MPI, программы, которые позволят найти максимальное значение в каждом столбце введенной матрицы. Сравнить скорости работы полученных реализаций, а так же проверить их валидность посредством Func и Perf тестов.
 
-- input/output format: на вход программе дается матрица, которая представлена в виде вектора, содержащего вектора, состоящие из чисел типа int. На выход подаётся вектор, с числами int, которые являются максимальными значениями столбцов матрицы (i-ый элемент вектора равен максимальному значению i-го столбца в данной матрице).
+- input/output format: на вход программе подаются размеры матрицы (два целых числа), и сама матрица, которая представлена в виде одного вектора, содержащего int числа (то есть матрица хранится линейно). На выход подаётся вектор, с числами int, которые являются максимальными значениями столбцов матрицы (i-ый элемент вектора равен максимальному значению i-го столбца в данной матрице).
 
 ## 3. Baseline Algorithm (Sequential)
 
@@ -71,56 +71,39 @@ int my_end = my_start + base + (rank < extra ?  1  :  0);
 
 ```cpp
 
-bool  OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
+bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
+  int rank = 0;
+  int size = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-int  rank  =  0, size  =  0;
+  int cols = std::get<1>(GetInput());
+  int rows = std::get<0>(GetInput());
+  if (rows <= 0 || cols <= 0) {
+    return true;
+  }
 
-MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  const auto &matrix = std::get<2>(GetInput());
 
-MPI_Comm_size(MPI_COMM_WORLD, &size);
+  const int base = rows / size;
+  const int extra = rows % size;
+  const int my_start = (rank * base) + std::min(rank, extra);
+  const int my_end = my_start + base + (rank < extra ? 1 : 0);
 
-  
+  std::vector<int> local_max(cols, std::numeric_limits<int>::min());
 
-const  auto  &matrix  =  GetInput();
+  for (int i = my_start; i < my_end; ++i) {
+    for (int j = 0; j < cols; ++j) {
+      local_max[j] = std::max(local_max[j], matrix[i * cols + j]);
+    }
+  }
 
-int  rows  =  matrix.size();
+  std::vector<int> global_max(cols);
+  MPI_Allreduce(local_max.data(), global_max.data(), cols, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-if (rows  ==  0) return  true;
+  GetOutput() = global_max;
 
-int  cols  =  matrix[0].size();
-
-std::vector<int> matrix_flat;
-
-int  base  =  rows  /  size;
-
-int  extra  =  rows  %  size;
-
-int  my_start  =  rank  *  base  +  std::min(rank, extra);
-
-int  my_end  =  my_start  +  base  + (rank  <  extra  ?  1  :  0);
-
-std::vector<int>  local_max(cols, std::numeric_limits<int>::min());
-
-for (int  i  =  my_start; i  <  my_end; ++i) {
-
-for (int  j  =  0; j  <  cols; ++j) {
-
-local_max[j] =  std::max(local_max[j], matrix[i][j]);
-
-}
-
-}
-
-std::vector<int>  global_max(cols);
-
-MPI_Allreduce(local_max.data(), global_max.data(), cols, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-
-GetOutput() = global_max;
-
-  
-
-return  true;
-
+  return true;
 }
 
 ```
@@ -165,29 +148,29 @@ return  true;
 
 ### 7.1 Correctness
 
-Корректность работы была проверена с помощью комплексного модульного тестирования с использованием фреймворка Google Test. Набор тестов включает в себя 5 тестовых случаев, охватывающих различные сценарии:
+Корректность работы была проверена с помощью комплексного модульного тестирования с использованием фреймворка Google Test. Набор тестов включает в себя 6 тестовых случаев, охватывающих различные сценарии:
 
 ```
 
-const  std::array<TestType, 6> kTestParam = {
+const std::array<TestType, 6> kTestParam = {
+    std::make_tuple(0, 0, std::vector<int>{}, "empty_matrix"),
 
-std::make_tuple(InType{}, "empty_matrix"),
+    std::make_tuple(3, 3, std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9}, "matrix_3x3"),
 
-std::make_tuple(InType{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}, "matrix_3x3"),
+    std::make_tuple(2, 2, std::vector<int>{-1, -5, 4, 0}, "negatives"),
 
-std::make_tuple(InType{{-1, -5}, {4, 0}}, "negatives"), std::make_tuple(InType{{10}}, "single_element"),
+    std::make_tuple(1, 1, std::vector<int>{10}, "single_element"),
 
-std::make_tuple(InType{{1, 10, 3}, {7, 0, 100}}, "random"),
+    std::make_tuple(2, 3, std::vector<int>{1, 10, 3, 7, 0, 100}, "random"),
 
-std::make_tuple(InType{{1, 2, 3, 4, 5, 6, 7, 8, 9}, {7, 6, 3, 2, 9, 4, 2, 5, 8}, {1, 2, 3, 4, 5, 6, 7, 8, 9},
-
-{1, 2, 3, 4, 5, 6, 7, 8, 9}, {7, 6, 3, 2, 9, 4, 2, 5, 8}},"Large_matrix")
-
+    std::make_tuple(5, 9, std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 6, 3, 2, 9, 4, 2, 5, 8, 1, 2, 3, 4, 5,
+                                           6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 6, 3, 2, 9, 4, 2, 5, 8},
+                    "large_matrix"),
 };
 
 ```
 
-Все тесты прошли успешно (5/5) со временем выполнения 0-2 мс на тест, что подтверждает правильность подсчета максимума столбцов матрицы для обеих реализаций: последовательной (SEQ) и MPI.
+Все тесты прошли успешно (6/6) со временем выполнения 0-2 мс на тест, что подтверждает правильность подсчета максимума столбцов матрицы для обеих реализаций: SEQ и MPI.
 
   
   

@@ -10,7 +10,7 @@ namespace ovchinnikov_m_max_values_in_matrix_rows {
 
 OvchinnikovMMaxValuesInMatrixRowsSEQ::OvchinnikovMMaxValuesInMatrixRowsSEQ(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
-  GetInput().assign(in.begin(), in.end());
+  GetInput() = in;
   static_cast<void>(GetOutput());
 }
 
@@ -23,18 +23,17 @@ bool OvchinnikovMMaxValuesInMatrixRowsSEQ::PreProcessingImpl() {
 }
 
 bool OvchinnikovMMaxValuesInMatrixRowsSEQ::RunImpl() {
-  const auto &matrix = GetInput();
-  const int rows = static_cast<int>(matrix.size());
-  if (rows == 0) {
+  int rows = std::get<0>(GetInput());
+  int cols = std::get<1>(GetInput());
+  if (rows <= 0 || cols <= 0) {
     return true;
   }
-  const int cols = static_cast<int>(matrix[0].size());
-
+  const auto &matrix = std::get<2>(GetInput());
   std::vector<int> result(cols, std::numeric_limits<int>::min());
 
   for (int i = 0; i < rows; ++i) {
     for (int j = 0; j < cols; ++j) {
-      result[j] = std::max(result[j], matrix[i][j]);
+      result[j] = std::max(result[j], matrix[i * cols + j]);
     }
   }
 

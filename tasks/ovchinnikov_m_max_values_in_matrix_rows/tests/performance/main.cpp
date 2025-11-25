@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <limits>
+#include <vector>
 
 #include "ovchinnikov_m_max_values_in_matrix_rows/common/include/common.hpp"
 #include "ovchinnikov_m_max_values_in_matrix_rows/mpi/include/ops_mpi.hpp"
@@ -18,16 +19,16 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
  protected:
   void SetUp() override {
     rows_ = 2000;
-    lines_ = 20000;
+    cols_ = 20000;
+    data_.resize(rows_ * cols_);
 
-    input_data_.resize(rows_);
-
-    for (int i = 0; i < rows_; i++) {
-      input_data_[i].resize(lines_);
-      for (int j = 0; j < lines_; j++) {
-        input_data_[i][j] = j * i;
+    for (int r = 0; r < rows_; r++) {
+      for (int c = 0; c < cols_; c++) {
+        data_[r * cols_ + c] = r * c;
       }
     }
+
+    input_data_ = std::make_tuple(rows_, cols_, data_);
   }
 
   bool CheckTestOutputData(OutType &output_data) final {
@@ -40,20 +41,24 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
 
  private:
   InType input_data_;
+  std::vector<int> data_;
   int rows_ = 0;
-  int lines_ = 0;
+  int cols_ = 0;
 
-  static OutType CalcExpected(const InType &matrix) {
-    if (matrix.empty() || matrix[0].empty()) {
+  static OutType CalcExpected(const InType &input) {
+    int rows = std::get<0>(input);
+    int cols = std::get<1>(input);
+    const std::vector<int> &data = std::get<2>(input);
+
+    if (rows == 0 || cols == 0) {
       return {};
     }
 
-    const std::size_t lines = matrix[0].size();
-    OutType result(lines, std::numeric_limits<int>::min());
+    OutType result(cols, std::numeric_limits<int>::min());
 
-    for (const auto &row : matrix) {
-      for (std::size_t j = 0; j < lines; j++) {
-        result[j] = std::max(result[j], row[j]);
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        result[c] = std::max(result[c], data[r * cols + c]);
       }
     }
     return result;

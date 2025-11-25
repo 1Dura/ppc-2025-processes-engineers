@@ -8,9 +8,9 @@
 
 namespace ovchinnikov_m_max_values_in_matrix_rows {
 
-using InType = std::vector<std::vector<int>>;
+using InType = std::tuple<int, int, std::vector<int>>;
 using OutType = std::vector<int>;
-using TestType = std::tuple<std::vector<std::vector<int>>, std::string>;
+using TestType = std::tuple<int, int, std::vector<int>, std::string>;
 using BaseTask = ppc::task::Task<InType, OutType>;
 
 }  // namespace ovchinnikov_m_max_values_in_matrix_rows

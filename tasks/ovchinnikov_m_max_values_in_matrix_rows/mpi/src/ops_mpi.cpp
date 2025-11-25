@@ -12,7 +12,7 @@ namespace ovchinnikov_m_max_values_in_matrix_rows {
 
 OvchinnikovMMaxValuesInMatrixRowsMPI::OvchinnikovMMaxValuesInMatrixRowsMPI(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
-  GetInput().assign(in.begin(), in.end());
+  GetInput() = in;
   static_cast<void>(GetOutput());
 }
 
@@ -30,13 +30,13 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  const auto &matrix = GetInput();
-  const int rows = static_cast<int>(matrix.size());
-  if (rows <= 0) {
+  int cols = std::get<1>(GetInput());
+  int rows = std::get<0>(GetInput());
+  if (rows <= 0 || cols <= 0) {
     return true;
   }
 
-  const int cols = static_cast<int>(matrix[0].size());
+  const auto &matrix = std::get<2>(GetInput());
 
   const int base = rows / size;
   const int extra = rows % size;
@@ -47,7 +47,7 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
 
   for (int i = my_start; i < my_end; ++i) {
     for (int j = 0; j < cols; ++j) {
-      local_max[j] = std::max(local_max[j], matrix[i][j]);
+      local_max[j] = std::max(local_max[j], matrix[i * cols + j]);
     }
   }
 
