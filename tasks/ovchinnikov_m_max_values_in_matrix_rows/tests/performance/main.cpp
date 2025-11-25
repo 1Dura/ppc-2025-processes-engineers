@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <cstddef>
 #include <limits>
 #include <vector>
 
@@ -22,9 +21,9 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
     cols_ = 20000;
     data_.resize(rows_ * cols_);
 
-    for (int r = 0; r < rows_; r++) {
-      for (int c = 0; c < cols_; c++) {
-        data_[r * cols_ + c] = r * c;
+    for (int i = 0; i < rows_; i++) {
+      for (int j = 0; j < cols_; j++) {
+        data_[i * cols_ + j] = i * j;
       }
     }
 
@@ -56,9 +55,9 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
 
     OutType result(cols, std::numeric_limits<int>::min());
 
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        result[c] = std::max(result[c], data[r * cols + c]);
+    for (int i = 0; i < rows; i++) {
+      for (int j = 0; j < cols; j++) {
+        result[j] = std::max(result[j], data[i * cols + j]);
       }
     }
     return result;

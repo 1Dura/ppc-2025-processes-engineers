@@ -55,10 +55,10 @@ class OvchinnikovMMaxValuesInMatrixRowsFuncTests : public ppc::util::BaseRunFunc
 
     OutType result(cols, std::numeric_limits<int>::min());
 
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        int value = data[r * cols + c];
-        result[c] = std::max(result[c], value);
+    for (int i = 0; i < rows; i++) {
+      for (int j = 0; j < cols; j++) {
+        int value = data[i * cols + j];
+        result[j] = std::max(result[j], value);
       }
     }
 
