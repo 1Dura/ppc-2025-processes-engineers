@@ -58,7 +58,7 @@ class OvchinnikovMMaxValuesInMatrixRowsFuncTests : public ppc::util::BaseRunFunc
 
     for (size_t i = 0; i < rows; i++) {
       for (size_t j = 0; j < cols; j++) {
-        int value = data[i * cols + j];
+        int value = data[(i * cols) + j];
         result[j] = std::max(result[j], value);
       }
     }
