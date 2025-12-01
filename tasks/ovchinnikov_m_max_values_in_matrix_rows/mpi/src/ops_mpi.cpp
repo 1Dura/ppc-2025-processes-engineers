@@ -26,37 +26,66 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::PreProcessingImpl() {
 }
 
 bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
-  int rank = 0;
-  int size = 0;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  int tmp_rank = 0;
+  int tmp_proc_amount = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &tmp_rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &tmp_proc_amount);
+  size_t rank = static_cast<size_t>(tmp_rank);
+  size_t proc_amount = static_cast<size_t>(tmp_proc_amount);
 
-  size_t cols = std::get<1>(GetInput());
-  size_t rows = std::get<0>(GetInput());
-  if (rows == 0 || cols == 0) {
+  const size_t lines = std::get<0>(GetInput());
+  const size_t cols = std::get<1>(GetInput());
+  if (lines == 0 || cols == 0) {
     return true;
   }
-
   const auto &matrix = std::get<2>(GetInput());
 
-  int base = static_cast<int>(rows / static_cast<size_t>(size));
-  int extra = static_cast<int>(rows % static_cast<size_t>(size));
-  const int my_start = (rank * base) + std::min(rank, extra);
-  const int my_end = my_start + base + (rank < extra ? 1 : 0);
+  std::vector<int> elem_count(proc_amount);
+  std::vector<int> elem_offset(proc_amount);
+  if (rank == 0) {
+    const size_t chunk_base = lines / proc_amount;
+    const size_t chunk_extra = lines % proc_amount;
+    for (size_t process = 0; process < proc_amount; process++) {
+      const size_t line_begin = (process * chunk_base) + std::min(process, chunk_extra);
+      size_t line_end = line_begin + chunk_base;
+      if (process < chunk_extra) {
+        line_end++;
+      }
 
-  std::vector<int> local_max(cols, std::numeric_limits<int>::min());
-
-  for (int i = my_start; i < my_end; ++i) {
-    for (size_t j = 0; j < cols; ++j) {
-      local_max[j] = std::max(local_max[j], matrix[(i * cols) + j]);
+      size_t elems = (line_end - line_begin) * cols;
+      size_t offset = line_begin * cols;
+      elem_count[process] = static_cast<int>(elems);
+      elem_offset[process] = static_cast<int>(offset);
     }
   }
 
+  MPI_Bcast(elem_count.data(), static_cast<int>(proc_amount), MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(elem_offset.data(), static_cast<int>(proc_amount), MPI_INT, 0, MPI_COMM_WORLD);
+
+  std::vector<int> local_data(elem_count[rank]);
+
+  const int *matrix_buffer = NULL;
+  if (rank == 0) {
+    matrix_buffer = matrix.data();
+  }
+  MPI_Scatterv(matrix_buffer,  // only for rank 0
+               elem_count.data(), elem_offset.data(), MPI_INT, local_data.data(), elem_count[rank], MPI_INT, 0,
+               MPI_COMM_WORLD);
+
+  std::vector<int> local_max(cols, std::numeric_limits<int>::min());
+
+  size_t local_lines = local_data.size() / cols;
+
+  for (size_t i = 0; i < local_lines; i++) {
+    const size_t local_base = i * cols;
+    for (size_t j = 0; j < cols; j++) {
+      local_max[j] = std::max(local_max[j], local_data[local_base + j]);
+    }
+  }
   std::vector<int> global_max(cols);
   MPI_Allreduce(local_max.data(), global_max.data(), static_cast<int>(cols), MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
   GetOutput() = global_max;
-
   return true;
 }
 

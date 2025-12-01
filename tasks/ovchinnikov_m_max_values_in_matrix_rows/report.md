@@ -18,13 +18,13 @@
 
 - Brief motivation: узнать про технологию Open MPI, написать собственную программу для изучения работы параллельных процессов.
 
-- Problem context: создать программу, которая использует параллельные процессы, сложнее, чем последовательную. Однако, это окупается высокой производительностью.
+- Problem context: создать программу, которая использует параллельные процессы, сложнее, чем последовательную. Однако, это окупается высокой производительностью, однако, в ходе работы я выяснил, что накладные расходы параллельной версии могут значительно замедлить программу.
 
-- Expected outcome: получить навыки работы с параллельными процессами, научиться ускорять программы.
+- Expected outcome: получить навыки работы с параллельными процессами, изучить внутренности MPI и как устроена архитектура параллелизма.
 
 ## 2. Problem Statement
 
-- Formal task definition: нужно написать последовательную и параллельную, использующую средства Open MPI, программы, которые позволят найти максимальное значение в каждом столбце введенной матрицы. Сравнить скорости работы полученных реализаций, а так же проверить их валидность посредством Func и Perf тестов.
+- Formal task definition: нужно написать последовательную и параллельную, использующую средства Open MPI, программы, которые позволят найти максимальное значение в каждом столбце введенной матрицы. Сравнить скорости работы полученных реализаций через perfomance тесты, а так же проверить их валидность посредством functional тестов.
 
 - input/output format: на вход программе подаются размеры матрицы (два size_t числа), и сама матрица, которая представлена в виде одного вектора, содержащего int числа (то есть матрица хранится линейно). На выход подаётся вектор, с числами int, которые являются максимальными значениями столбцов матрицы (j-ый элемент вектора равен максимальному значению j-го столбца в данной матрице).
 
@@ -36,15 +36,25 @@
 
 - Data distribution:
 
+Данные делятся нулевым процессом между остальными следующим образом:
+1. сначала высчитывается базовый размер кусочка, который достанется каждому процессу. (Мы делим кол-во строк (да-да именно строк, т.к матрица то хранится одним сплошным вектором) на кол-во процессов)
+2. после этого есть шанс, что кол-во процессов не кратно кол-ву строк, следовательно нужно достать остаток строк, которые мы потеряли, для этого берем остаток от деления строк на процессы.
+3. Чтобы i-ый процесс знал, где он должен работать, ему нужно знать где начальная граница его блока данных, для этого переступим через все блоки процессов, которые предшествуют процессу i и прибавим минимум из номера процесса и остатка строк.
+4. Для понимания конца своего блока достаточно прибавить к началу размер блока и в зависимости от того, меньше ли номер процесса, чем остаток, мы прибавляем единицу или ноль соответственно.
+
+Этот алгоритм широко известен в HPC-литературе под несколькими именами, но его суть в том, чтобы распределить данные между процессами как можно равномернее, то есть по итогу его работы любые два блока данных не отличаются размерами больше, чем на единицу.
+
 ```cpp
 
-size_t base = rows / size;
+size_t chunk_base = lines / process_amount;
 
-size_t extra = rows % size;
+size_t chunk_extra = lines % process_amount;
 
-size_t my_start = rank * base +  std::min(rank, extra);
+size_t chunk_start = (rank * chunk_base) +  std::min(rank, chunk_extra);
 
-size_t my_end = my_start + base + (rank < extra ?  1  :  0);
+size_t chunk_end_bit=0;
+if(rank<chunk_extra) chunk_end_bit=1;
+size_t chunk_end = chunk_start + chunk_base + chunk_end_bit;
 
 ```
 
@@ -52,15 +62,64 @@ size_t my_end = my_start + base + (rank < extra ?  1  :  0);
 
 - Process 0:
 
-- Обработка частей матрицы (base столбцов)
+Нулевой процесс использует алгоритм распределения данных по блокам для других процессов и кладет эти данные в два вектора:
+в первом векторе elem_count в i-ой ячейке хранится кол-во элементов, которое должен обрабатывать i-ый процесс; во втором векторе elem_offset в i-ой ячейке хранится смещение, чтобы i-ый процесс понимал откуда ему нужно стартовать.
+
+```cpp
+  std::vector<int> elem_count(proc_amount);
+  std::vector<int> elem_offset(proc_amount);
+  if (rank == 0) {
+    const size_t chunk_base = lines / proc_amount;
+    const size_t chunk_extra = lines % proc_amount;
+    for (size_t process = 0; process < proc_amount; process++) {
+      const size_t line_begin = (process * chunk_base) + std::min(process, chunk_extra);
+      size_t line_end = line_begin + chunk_base;
+      if(process < chunk_extra){
+        line_end++;
+      }
+
+      size_t elems = (line_end - line_begin) * cols;
+      size_t offset = line_begin * cols;
+      elem_count[process] = static_cast<int>(elems);
+      elem_offset[process] = static_cast<int>(offset);
+    }
+  }
+```
+p.s - на нулевом процессе я заполняю изначально пустой буфер для матрицы оригинальными данными, который потом отправится в scatterv.
+```cpp
+ if(rank==0){
+    matrix_buffer=matrix.data();
+  }
+```
 
 - Рассылка данных через MPI_Bcast
+
+```cpp
+  MPI_Bcast(elem_count.data(), static_cast<int>(proc_amount), MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(elem_offset.data(), static_cast<int>(proc_amount), MPI_INT, 0, MPI_COMM_WORLD);
+```
 
 - All processes:
 
 - Локальный поиск максимума в своём блоке
+```cpp
+  std::vector<int> local_max(cols, std::numeric_limits<int>::min());
 
+  size_t local_lines = local_data.size() / cols;
+
+  for (size_t i = 0; i < local_lines; i++) {
+    const size_t local_base = i * cols;
+    for (size_t j = 0; j < cols; j++) {
+      local_max[j] = std::max(local_max[j], local_data[local_base + j]);
+    }
+  } 
+```
 - Участие в MPI_Allreduce
+
+```cpp
+  MPI_Allreduce(local_max.data(), global_max.data(),
+                static_cast<int>(cols), MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+```
 
 
   
@@ -72,37 +131,74 @@ size_t my_end = my_start + base + (rank < extra ?  1  :  0);
 ```cpp
 
 bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
-  int rank = 0;
-  int size = 0;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  int tmp_rank = 0;
+  int tmp_size = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &tmp_rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &tmp_size);
+  size_t rank = static_cast<size_t>(tmp_rank);
+  size_t size = static_cast<size_t>(tmp_size);
 
-  size_t cols = std::get<1>(GetInput());
-  size_t rows = std::get<0>(GetInput());
-  if (rows <= 0 || cols <= 0) {
+  const size_t lines = std::get<0>(GetInput());
+  const size_t cols = std::get<1>(GetInput());
+  if (lines == 0 || cols == 0) {
     return true;
   }
+  const auto& matrix = std::get<2>(GetInput());
 
-  const auto &matrix = std::get<2>(GetInput());
+  std::vector<int> elem_count(size);
+  std::vector<int> elem_offset(size);
+  if (rank == 0) {
+    const size_t base = lines / size;
+    const size_t extra = lines % size;
+    for (size_t process = 0; process < size; process++) {
+      const size_t line_begin = (process * base) + std::min(process, extra);
+      size_t line_end = line_begin + base;
+      if(process < extra){
+        line_end++;
+      }
 
-  const size_t base = rows / size;
-  const size_t extra = rows % size;
-  const size_t my_start = (rank * base) + std::min(rank, extra);
-  const size_t my_end = my_start + base + (rank < extra ? 1 : 0);
-
-  std::vector<int> local_max(cols, std::numeric_limits<int>::min());
-
-  for (size_t i = my_start; i < my_end; ++i) {
-    for (size_t j = 0; j < cols; ++j) {
-      local_max[j] = std::max(local_max[j], matrix[i * cols + j]);
+      size_t elems = (line_end - line_begin) * cols;
+      size_t offset = line_begin * cols;
+      elem_count[process] = static_cast<int>(elems);
+      elem_offset[process] = static_cast<int>(offset);
     }
   }
 
+  MPI_Bcast(elem_count.data(), static_cast<int>(size), MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(elem_offset.data(), static_cast<int>(size), MPI_INT, 0, MPI_COMM_WORLD);
+
+  std::vector<int> local_data(elem_count[rank]);
+
+  const int* matrix_buffer = NULL;
+  if(rank==0){
+    matrix_buffer=matrix.data();
+  }
+  MPI_Scatterv(
+      matrix_buffer, // only for rank 0
+      elem_count.data(),
+      elem_offset.data(),
+      MPI_INT,
+      local_data.data(),  
+      elem_count[rank],
+      MPI_INT,
+      0,
+      MPI_COMM_WORLD);
+
+  std::vector<int> local_max(cols, std::numeric_limits<int>::min());
+
+  size_t local_lines = local_data.size() / cols;
+
+  for (size_t i = 0; i < local_lines; i++) {
+    const size_t base = i * cols;
+    for (size_t j = 0; j < cols; j++) {
+      local_max[j] = std::max(local_max[j], local_data[base + j]);
+    }
+  } 
   std::vector<int> global_max(cols);
-  MPI_Allreduce(local_max.data(), global_max.data(), cols, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(local_max.data(), global_max.data(),
+                static_cast<int>(cols), MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
   GetOutput() = global_max;
-
   return true;
 }
 
@@ -110,7 +206,7 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
 
 - Important assumptions and corner cases: если на вход подаётся пустая матрица, то возвращается true
 
-- Memory usage considerations: чтобы сократить время работы программы каждому процессу выделен доступ к памяти GetInput(), однако работают они только со своим блоком столбцов матрицы.
+- Memory usage considerations: исходные данные доступны исключительно нулевому процессу, который потом рассылает всем остальным данные о положении их блоков и сами эти блоки данных.
 
   
 
@@ -144,7 +240,7 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
 
 ## 7. Results and Discussion
 
-  
+  Что можно сказать предварительно? Изначально я раздал всем процессам доступ к общим данным и каждый из них удобно работал со своей частью и не трогал чужое, это было довольно быстро, было приятное ускорение работы pipeline, однако после первого ревью я осознал, что это "нечестное" распределение данных и такое в ppc не приветствуется. Далее в выводе я расскажу, с чем столкнулся и как решал.
 
 ### 7.1 Correctness
 
@@ -179,28 +275,36 @@ const std::array<TestType, 6> kTestParam = {
 
 Present time, speedup and efficiency. Example table:
 
-  
+| Mode | Count | Time, s         | Speedup | Efficiency |
+| ---- | ----- | --------------- | ------- | ---------- |
+| seq  | 1     | 0.02 ± 0.005    | 1.00    | 1          |
+| seq  | 1     | 0.02 ± 0.005    | 1.00    | 1          |
+| mpi  | 2     | 0.0765 ± 0.0025 | 0.261   | 0.131      |
+| mpi  | 2     | 0.078 ± 0.002   | 0.256   | 0.128      |
+| mpi  | 3     | 0.063 ± 0.003   | 0.317   | 0.106      |
+| mpi  | 3     | 0.065 ± 0.005   | 0.308   | 0.103      |
+| mpi  | 4     | 0.057 ± 0.0025  | 0.351   | 0.0877     |
+| mpi  | 4     | 0.057 ± 0.0025  | 0.351   | 0.0877     |
+| mpi  | 6     | 0.044 ± 0.004   | 0.455   | 0.0758     |
+| mpi  | 6     | 0.05 ± 0.01     | 0.400   | 0.0667     |
+| mpi  | 8     | 0.048 ± 0.002   | 0.417   | 0.0521     |
+| mpi  | 8     | 0.06 ± 0.015    | 0.333   | 0.0417     |
 
-| Mode | Count | Time, s | Speedup | Efficiency |
+Для чистоты эксперимента я запускал по 5 раз перфоманс тесты для каждого количества процессов, я брал минимальное и максимальное получившееся значение, находил среднее и подписал погрешность тестирования. (Заметил, что чем больше процессов, тем больше погрешность во времени).
 
-|-------------|-------|---------|---------|------------|
+К большому разочарованию, можно заметить, что параллелизм не только не ускорил решение задачи, но ещё и значительно замедлил.
+Скорость достигает пика к 6 процессам, но эффективность их использования при этом неумолимо мала. Последовательная версия по всем параметрам выиграла эту гонку. Далее в выводе я объясню почему так получилось. 
 
-| seq | 1 | 0.0159543991 | 1.00 | N/A |
-
-| seq | 1 | 0.0139318466 | 1.00 | N/A |
-
-| mpi | 4 | 0.0035918574 | 4.16 | 104% |
-
-| mpi | 4 | 0.0074977316 | 1.99 | 49.7% |
-
-Реализация MPI показывает ускорение более чем в четыре раза по сравнению с последовательной версией, но это видно только на pipeline. На task_run, в свою очередь, разница лишь в два раза, поскольку здесь сравнивается сам алгоритм поиска максимума в столбце, который по идее, выполняется одинаково на MPI и SEQ версии (мне кажется, что разница возникает из-за погрешности). А поскольку этот одинаковый алгоритм выполняется параллельно на нескольких процессах, то время pipeline`а в разы меньше на MPI версии.
   
   
 
 ## 8. Conclusions
 
 Summarize findings and limitations.
-Эта задача показывает хороший параллелизм, потому что максимум в каждом столбце уникальный, и я свободно могу делить матрицу на блоки из столбцов и на каждом процессе отдельно проходиться по блокам, как будто по отдельным матрицам. Однако, есть слабое место в коде: если подавать матрицу с большим кол-вом строк, чем столбцов, я не смогу нормально поделить матрицу, блоки будут большими и неудобными. В целом, это можно было бы решить, если бы я делил матрицу на блоки по площади, а не по столбцам, но я посчитал это сложным в реализации, т.к. пришлось бы как-то связывать данные из разделенных столбцов, тогда данные были бы уже зависимыми, общения между процессами было бы больше и на маленьких данных MPI версия тормозила бы процесс.
+
+  Пришлось изрядно потрудиться, чтобы материнский процесс разбивал данные, упаковывал их, а затем рассылал остальным. Стало ли это быстрее? Конечно нет, ведь теперь нужно сначала разобраться с данными, то есть дождаться завершения нулевого процесса и рассылки данных, и только тогда остальные смогут приступить к поиску максимума в своих локальных блоках. Мало того, в конце ещё нужно будет собрать эти максимумы через Allreduce, потому что я делю матрицу по СТРОКАМ, а максимумы ищу в столбцах. Понимаете, да? Я поделил матрицу между процессами по строкам, то есть у каждого процесса условно n строк, а в каждой строке содержится по одному элементу каждого столбца! То есть, если у нас m столбцов, то процесс ищет m максимумов в m блоках, размер которых n. Ну это просто безумие.
+
+  В моем понимании, такая задача не подается ускорению с помощью параллелизма. Да, можно со мной спорить, утверждая, что матрицу можно транспонировать (повернуть на бок) и тогда все твои строки превратятся в столбики и дели свою матрицу по строкам, которые теперь уже столбцы, НО как вы смотрите на транспонировании матрицы размерами 50к элементов? Учитывая, что я храню в матрице целые числа (ячейка = 4 байт), то размер матрицы в памяти 200к байт или +-200КБ, а чтобы транспонировать матрицу, нужны ещё 200 килобайт, а это расходы на память и опять же время. Ещё можно было бы подавать матрицу на вход, считая, что она уже лежит на боку, но это уже жульничество, как по мне. Гораздо интереснее объединять данные со всех процессов.
   
 
 ## 9. References

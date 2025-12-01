@@ -19,8 +19,8 @@ class OvchinnikovMMaxValuesInMatrixRowsPerfTest : public ppc::util::BaseRunPerfT
 
  protected:
   void SetUp() override {
-    rows_ = 2000;
-    cols_ = 20000;
+    rows_ = 50000;
+    cols_ = 1000;
     data_.resize(rows_ * cols_);
 
     for (size_t i = 0; i < rows_; i++) {

@@ -24,15 +24,15 @@ bool OvchinnikovMMaxValuesInMatrixRowsSEQ::PreProcessingImpl() {
 }
 
 bool OvchinnikovMMaxValuesInMatrixRowsSEQ::RunImpl() {
-  size_t rows = std::get<0>(GetInput());
+  size_t lines = std::get<0>(GetInput());
   size_t cols = std::get<1>(GetInput());
-  if (rows == 0 || cols == 0) {
+  if (lines == 0 || cols == 0) {
     return true;
   }
   const auto &matrix = std::get<2>(GetInput());
   std::vector<int> result(cols, std::numeric_limits<int>::min());
 
-  for (size_t i = 0; i < rows; ++i) {
+  for (size_t i = 0; i < lines; ++i) {
     for (size_t j = 0; j < cols; ++j) {
       result[j] = std::max(result[j], matrix[(i * cols) + j]);
     }
