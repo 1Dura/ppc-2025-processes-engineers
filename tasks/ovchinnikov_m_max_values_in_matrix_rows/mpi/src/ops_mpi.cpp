@@ -30,8 +30,8 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
   int tmp_proc_amount = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &tmp_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &tmp_proc_amount);
-  size_t rank = static_cast<size_t>(tmp_rank);
-  size_t proc_amount = static_cast<size_t>(tmp_proc_amount);
+  auto rank = static_cast<size_t>(tmp_rank);
+  auto proc_amount = static_cast<size_t>(tmp_proc_amount);
 
   const size_t lines = std::get<0>(GetInput());
   const size_t cols = std::get<1>(GetInput());
@@ -64,7 +64,7 @@ bool OvchinnikovMMaxValuesInMatrixRowsMPI::RunImpl() {
 
   std::vector<int> local_data(elem_count[rank]);
 
-  const int *matrix_buffer = NULL;
+  const int *matrix_buffer = nullptr;
   if (rank == 0) {
     matrix_buffer = matrix.data();
   }
