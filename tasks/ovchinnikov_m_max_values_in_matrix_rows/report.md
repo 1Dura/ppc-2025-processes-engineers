@@ -310,13 +310,3 @@ Summarize findings and limitations.
 ## 9. References
 
 1. [Учебные материалы](https://disk.yandex.ru/d/NvHFyhOJCQU65w)
-
-  
-
-## Appendix (Optional)
-
-```cpp
-
-// Short, readable code excerpts if needed
-
-```
