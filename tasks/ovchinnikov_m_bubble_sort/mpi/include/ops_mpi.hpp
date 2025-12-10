@@ -1,16 +1,16 @@
 #pragma once
 
-#include "ovchinnikov_m_max_values_in_matrix_rows/common/include/common.hpp"
+#include "ovchinnikov_m_bubble_sort/common/include/common.hpp"
 #include "task/include/task.hpp"
 
-namespace ovchinnikov_m_max_values_in_matrix_rows {
+namespace ovchinnikov_m_bubble_sort {
 
-class OvchinnikovMMaxValuesInMatrixRowsMPI : public BaseTask {
+class OvchinnikovMBubbleSortMPI : public BaseTask {
  public:
   static constexpr ppc::task::TypeOfTask GetStaticTypeOfTask() {
     return ppc::task::TypeOfTask::kMPI;
   }
-  explicit OvchinnikovMMaxValuesInMatrixRowsMPI(const InType &in);
+  explicit OvchinnikovMBubbleSortMPI(const InType &in);
 
  private:
   bool ValidationImpl() override;
@@ -19,4 +19,4 @@ class OvchinnikovMMaxValuesInMatrixRowsMPI : public BaseTask {
   bool PostProcessingImpl() override;
 };
 
-}  // namespace ovchinnikov_m_max_values_in_matrix_rows
+}  // namespace ovchinnikov_m_bubble_sort
