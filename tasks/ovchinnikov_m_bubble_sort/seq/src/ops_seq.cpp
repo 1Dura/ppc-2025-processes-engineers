@@ -1,5 +1,6 @@
 #include "ovchinnikov_m_bubble_sort/seq/include/ops_seq.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <vector>
 
