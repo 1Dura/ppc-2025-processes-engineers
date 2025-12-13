@@ -161,6 +161,7 @@ bool OvchinnikovMBubbleSortMPI::RunImpl() {
       elem_offset[i] = offset;
       offset += elem_count[i];
     }
+    //
   }
 
   MPI_Bcast(elem_count.data(), proc_count, MPI_INT, 0, MPI_COMM_WORLD);
