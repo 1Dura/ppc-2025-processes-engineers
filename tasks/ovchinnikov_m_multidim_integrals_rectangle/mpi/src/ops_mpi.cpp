@@ -57,10 +57,10 @@ OvchinnikovMMultiDimIntegralsRectangleMPI::OvchinnikovMMultiDimIntegralsRectangl
 bool OvchinnikovMMultiDimIntegralsRectangleMPI::ValidationImpl() {
   const auto &input = GetInput();
   if (std::get<0>(input) <= 0) {
-    return false; 
+    return false;
   }
   if (std::get<1>(input) <= 0) {
-    return false; 
+    return false;
   }
 
   const auto &lower_bounds = std::get<2>(input);
@@ -154,10 +154,8 @@ bool OvchinnikovMMultiDimIntegralsRectangleMPI::RunImpl() {
     GetOutput() = global_integral;
 
     MPI_Bcast(&global_integral, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-  } 
-  if(rank!=0) {
-
+  }
+  if (rank != 0) {
     std::array<int, 2> params{{0, 0}};
     MPI_Bcast(params.data(), 2, MPI_INT, 0, MPI_COMM_WORLD);
     n = params[0];
@@ -186,7 +184,6 @@ bool OvchinnikovMMultiDimIntegralsRectangleMPI::RunImpl() {
         ComputePartialIntegral(func, n, dim, local_lower_bounds, local_steps, cell_volume, start_point, end_point);
 
     MPI_Send(&local_integral, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
-
 
     MPI_Bcast(&global_integral, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
